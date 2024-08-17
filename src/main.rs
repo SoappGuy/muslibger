@@ -3,6 +3,8 @@ mod args_parse;
 mod error;
 mod processing;
 
+use ::audiotags::{MimeType, Picture, Tag};
+use log::debug;
 use std::env;
 
 fn main() -> Result<(), error::Error> {
@@ -18,8 +20,9 @@ fn main() -> Result<(), error::Error> {
         }
     };
 
-    processing::process_paths(&parsed_args.paths_to_process, |_path| {
-        // info!("{path:?}");
+    processing::process_paths(&parsed_args.paths_to_process, |path| {
+        let tag = Tag::new().read_from_path(path).unwrap();
+        debug!("{}", tag.title().unwrap());
         true
     })?;
 

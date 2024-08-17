@@ -60,3 +60,58 @@ pub fn process_paths(
     info!("processed {} entries", len.to_string().red());
     Ok(len)
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path() {
+        let result = process_path("./test_files/hotwax.flac".into(), |_| true)
+            .unwrap()
+            .len();
+
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn path_dir() {
+        let result = process_path("./test_files".into(), |_| true).unwrap().len();
+
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn paths() {
+        let result = process_paths(
+            &vec![
+                "./test_files/hotwax.flac".into(),
+                "./test_files/sissyneck.flac".into(),
+            ],
+            |_| true,
+        )
+        .unwrap();
+
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn paths_same() {
+        let result = process_paths(
+            &vec![
+                "./test_files/hotwax.flac".into(),
+                "./test_files/hotwax.flac".into(),
+            ],
+            |_| true,
+        )
+        .unwrap();
+
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn paths_empty() {
+        let result = process_paths(&vec![], |_| true).unwrap();
+
+        assert_eq!(result, 0);
+    }
+}
