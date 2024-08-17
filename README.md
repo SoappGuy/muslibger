@@ -27,3 +27,18 @@ cargo run -- [args]
 ```bash
  cargo test -- --show-output
 ```
+
+### Advanced logging:
+You can change logging level by specifying RUST_LOG env variable before run or globally in your shell:
+```bash
+RUST_LOG=level cargo run -- [args]
+# or even
+RUST_LOG=level muslibger [args]
+```
+log levels:
+* error
+* warn
+* info
+* debug
+* trace
+* off
