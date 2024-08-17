@@ -2,6 +2,7 @@
 mod args_parse;
 mod error;
 
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -32,8 +33,8 @@ fn main() -> Result<(), error::Error> {
     Ok(())
 }
 
-fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Error> {
-    let mut processed = 0;
+fn process_path(path: PathBuf, call_on_file: fn(&Path) -> bool) -> Result<HashSet<PathBuf>, Error> {
+    let mut processed = HashSet::new();
 
     if path.is_dir() {
         debug!("processing {}: \t{:?}", "dir".yellow(), path);
@@ -41,24 +42,8 @@ fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Err
         for path in fs::read_dir(path)? {
             let path = path?.path();
 
-            if path.exists() {
-                if path.is_dir() {
-                    processed += process_path(&path, call_on_file)?;
-                } else {
-                    debug!(
-                        "processing {}:\t{:?}",
-                        "file".blue(),
-                        &path.file_name().unwrap()
-                    );
-
-                    processed += if call_on_file(&path) { 1 } else { 0 };
-                }
-            } else {
-                debug!(
-                    "skipping nonexisting {}: \t{:?}",
-                    "file".blue(),
-                    &path.file_name().unwrap()
-                );
+            if path.exists() && !processed.contains(&path) {
+                processed.extend(process_path(path, call_on_file)?);
             }
         }
     } else {
@@ -68,23 +53,29 @@ fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Err
             &path.file_name().unwrap()
         );
 
-        processed += if call_on_file(path) { 1 } else { 0 };
+        if call_on_file(&path) {
+            processed.insert(path);
+        }
     }
+
     Ok(processed)
 }
 
-fn process_paths(paths: &Vec<PathBuf>, call_on_file: fn(&Path) -> bool) -> Result<i32, Error> {
+fn process_paths(paths: &Vec<PathBuf>, call_on_file: fn(&Path) -> bool) -> Result<usize, Error> {
     info!(
         "collected {} entries, processing",
         paths.len().to_string().red()
     );
 
-    let mut processed = 0;
+    let mut processed = HashSet::new();
 
     for path in paths {
-        processed += process_path(path, call_on_file)?;
+        if !processed.contains(path) {
+            processed.extend(process_path(path.to_path_buf(), call_on_file)?);
+        }
     }
 
-    info!("processed {} entries", processed.to_string().red());
-    Ok(processed)
+    let len = processed.len();
+    info!("processed {} entries", len.to_string().red());
+    Ok(len)
 }
