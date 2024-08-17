@@ -4,13 +4,11 @@ use std::{env, path::PathBuf};
 use colored::Colorize;
 use log::{error, info, warn};
 
-pub fn parse() -> Result<Args, Error> {
+pub fn parse(args: Vec<String>) -> Result<Args, Error> {
     let current_dir = env::current_dir()?;
 
-    let args: Vec<String> = env::args().collect();
-
     let mut paths = Vec::new();
-    let mut root = current_dir.clone();
+    let mut destination_root = current_dir.clone();
 
     for arg in &args[1..] {
         info!("processing arg: `{:?}`", arg);
@@ -30,7 +28,7 @@ pub fn parse() -> Result<Args, Error> {
 
                         if path.is_dir() {
                             info!("new {} path is set", "destination".cyan());
-                            root = path;
+                            destination_root = path;
                         } else {
                             error!("provided {} path is invalid", "destination".cyan());
                             return Err(Error::Destination);
@@ -43,9 +41,8 @@ pub fn parse() -> Result<Args, Error> {
                 }
             }
             Some("-h") | Some("--help") => {
-                info!("printing help");
-                print_help();
-                return Err(Error::Interrupt);
+                info!("parsed help request");
+                return Err(Error::HelpInterrupt);
             }
             Some(path) => {
                 info!("adding new {} to processing queue", "path".green());
@@ -69,7 +66,7 @@ pub fn parse() -> Result<Args, Error> {
 
     if paths.is_empty() {
         warn!(
-            "no {} was provided, adding {} as path to process",
+            "no {} was added to precessing queue, adding {} as path to process",
             "paths".green(),
             "cwd".green()
         );
@@ -78,12 +75,8 @@ pub fn parse() -> Result<Args, Error> {
 
     Ok(Args {
         paths_to_process: paths,
-        output_dir_root: root,
+        output_dir_root: destination_root,
     })
-}
-
-fn print_help() -> () {
-    todo!()
 }
 
 #[derive(Debug)]

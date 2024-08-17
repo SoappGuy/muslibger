@@ -1,3 +1,4 @@
+use indoc::indoc;
 use std::{io, path::PathBuf};
 use thiserror::Error;
 
@@ -11,6 +12,19 @@ pub enum Error {
 
     #[error("Invalid destination path specified")]
     Destination,
+
+    #[error("{}", indoc! {"
+        Your music library manager
+
+        Usage: muslibger [OPTIONS] [PATHS...]
+
+        Options:
+          -h, --help                Show this help message and exit
+          -d, --destination=PATH    Specify the destination directory for processed files
+
+        For options that require PATH, if no path/paths are provided, the current working directory will be used.
+    "})]
+    HelpInterrupt,
 
     #[error("Manual interupt")]
     Interrupt,

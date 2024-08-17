@@ -13,14 +13,27 @@ use log::{debug, info, warn};
 fn main() -> Result<(), error::Error> {
     env_logger::builder().format_timestamp_secs().init();
 
-    let args = args_parse::parse()?;
+    let cmd_args: Vec<String> = env::args().collect();
+    let parsed_args;
 
-    process_paths(&args.paths_to_process, |path| {
+    match args_parse::parse(cmd_args) {
+        Ok(args) => parsed_args = args,
+        Err(err) => {
+            println!("{err}");
+            return Ok(());
+        }
+    };
+
+    process_paths(&parsed_args.paths_to_process, |path| {
         // info!("{path:?}");
         true
     })?;
 
     Ok(())
+}
+
+fn print_help() -> () {
+    todo!()
 }
 
 fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Error> {
@@ -44,14 +57,22 @@ fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Err
 
                     processed += if call_on_file(&path) { 1 } else { 0 };
                 }
+            } else {
+                debug!(
+                    "skipping nonexisting {}: \t{:?}",
+                    "file".blue(),
+                    &path.file_name().unwrap()
+                );
             }
         }
     } else {
         debug!(
-            "skipping nonexisting {}: \t{:?}",
+            "processing {}:\t{:?}",
             "file".blue(),
             &path.file_name().unwrap()
         );
+
+        processed += if call_on_file(path) { 1 } else { 0 };
     }
     Ok(processed)
 }
