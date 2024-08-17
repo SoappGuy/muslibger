@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod args_parse;
 mod error;
 
@@ -14,26 +15,21 @@ fn main() -> Result<(), error::Error> {
     env_logger::builder().format_timestamp_secs().init();
 
     let cmd_args: Vec<String> = env::args().collect();
-    let parsed_args;
 
-    match args_parse::parse(cmd_args) {
-        Ok(args) => parsed_args = args,
+    let parsed_args = match args_parse::parse(cmd_args) {
+        Ok(args) => args,
         Err(err) => {
             println!("{err}");
             return Ok(());
         }
     };
 
-    process_paths(&parsed_args.paths_to_process, |path| {
+    process_paths(&parsed_args.paths_to_process, |_path| {
         // info!("{path:?}");
         true
     })?;
 
     Ok(())
-}
-
-fn print_help() -> () {
-    todo!()
 }
 
 fn process_path(path: &Path, call_on_file: fn(&Path) -> bool) -> Result<i32, Error> {
