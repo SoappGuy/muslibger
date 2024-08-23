@@ -1,4 +1,5 @@
 use indoc::indoc;
+use lofty::error::LoftyError;
 use std::{io, path::PathBuf};
 use thiserror::Error;
 
@@ -25,6 +26,9 @@ pub enum Error {
         For options that require PATH, if no path/paths are provided, the current working directory will be used.
     "})]
     HelpInterrupt,
+
+    #[error("Tag Parsing error occured")]
+    Parsing(#[from] LoftyError),
 
     #[error("Manual interupt")]
     Interrupt,

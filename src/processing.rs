@@ -1,5 +1,12 @@
 use colored::Colorize;
-use log::{debug, info};
+use lofty::{
+    self,
+    file::TaggedFileExt,
+    read_from_path,
+    tag::{Accessor, ItemKey, TagExt, TagItem},
+};
+
+use log::{debug, error, info};
 use std::{
     collections::HashSet,
     fs,
@@ -8,9 +15,9 @@ use std::{
 
 use crate::error;
 
-fn process_path(
+fn process_path<F: Fn(&Path) -> bool>(
     path: PathBuf,
-    call_on_file: fn(&Path) -> bool,
+    call_on_file: &F,
 ) -> Result<HashSet<PathBuf>, error::Error> {
     let mut processed = HashSet::new();
 
@@ -39,9 +46,9 @@ fn process_path(
     Ok(processed)
 }
 
-pub fn process_paths(
+pub fn process_paths<F: Fn(&Path) -> bool>(
     paths: &Vec<PathBuf>,
-    call_on_file: fn(&Path) -> bool,
+    call_on_file: F,
 ) -> Result<usize, error::Error> {
     info!(
         "collected {} entries, processing",
@@ -52,7 +59,7 @@ pub fn process_paths(
 
     for path in paths {
         if !processed.contains(path) {
-            processed.extend(process_path(path.to_path_buf(), call_on_file)?);
+            processed.extend(process_path(path.to_path_buf(), &call_on_file)?);
         }
     }
 
@@ -61,12 +68,52 @@ pub fn process_paths(
     Ok(len)
 }
 
+fn call_on_path(path: &Path, pattern: &str, root: &Path) -> Result<(), error::Error> {
+    let mut binding = read_from_path(path).unwrap();
+
+    if let Some(tag) = binding.primary_tag_mut() {
+        info!("Reading Tag from {}", path.to_str().unwrap());
+
+        let track_title = tag.get_string(&ItemKey::TrackTitle).unwrap_or("no_track");
+        let album_title = tag.get_string(&ItemKey::AlbumTitle).unwrap_or("no_album");
+        let track_number = tag.get_string(&ItemKey::TrackNumber).unwrap_or("no_number");
+        let year = tag.get_string(&ItemKey::Year).unwrap_or("no_year");
+        let artist_name = tag.get_string(&ItemKey::AlbumArtist).unwrap_or("no_artist");
+
+        let root = root.to_str().unwrap();
+        let extention = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
+        let destination = PathBuf::from(format!(
+            "{root}/processed/{artist_name}/{album_title} ({year})/{track_number} - {track_title}.{extention}"
+        ));
+
+        info!("Path parsed for file: {}", destination.to_str().unwrap());
+
+        if destination.is_file() {
+            info!("Creating directory tree for destination");
+            std::fs::create_dir_all(destination.parent().unwrap())?;
+
+            info!("Copying from source to destination with new filename");
+            std::fs::copy(path, destination)?;
+        } else {
+            error!("Filename in provided pattern is invalid")
+        }
+    } else {
+        error!("File {} have no Tag", path.to_str().unwrap())
+    }
+
+    Ok(())
+}
+
 mod tests {
     use super::*;
 
     #[test]
     fn path() {
-        let result = process_path("./test_files/hotwax.flac".into(), |_| true)
+        let result = process_path("./test_files/hotwax.flac".into(), &|_| true)
             .unwrap()
             .len();
 
@@ -75,7 +122,9 @@ mod tests {
 
     #[test]
     fn path_dir() {
-        let result = process_path("./test_files".into(), |_| true).unwrap().len();
+        let result = process_path("./test_files".into(), &|_| true)
+            .unwrap()
+            .len();
 
         assert_eq!(result, 2);
     }
